@@ -8,7 +8,7 @@ AI agents, webhooks, or background workers.
 
 Website - https://onceonly.tech/ai/
 
-[![PyPI version](https://img.shields.io/pypi/v/onceonly.svg)](https://pypi.org/project/onceonly/)
+[![PyPI version](https://img.shields.io/pypi/v/onceonly.svg)](https://pypi.org/project/onceonly-sdk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -26,7 +26,7 @@ Website - https://onceonly.tech/ai/
 ## Installation
 
 ```bash
-pip install onceonly
+pip install onceonly-sdk
 ```
 
 ---
