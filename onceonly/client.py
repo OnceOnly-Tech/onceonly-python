@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, Mapping
 
 import httpx
 
@@ -67,10 +67,10 @@ class OnceOnly:
         self,
         key: str,
         ttl: Optional[int] = None,  # IMPORTANT: None => server uses plan default TTL
-        metadata: Optional[Dict[str, Any]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         request_id: Optional[str] = None,
     ) -> CheckLockResult:
-        payload = self._make_payload(key, ttl, metadata)
+        payload = self._make_payload(key, ttl, meta)
 
         headers = {}
         if request_id:
@@ -78,26 +78,31 @@ class OnceOnly:
 
         try:
             resp = self._sync_client.post("/check-lock", json=payload, headers=headers)
-            return self._parse_check_lock_response(resp, fallback_key=key, fallback_ttl=int(ttl or 0))
+            return self._parse_check_lock_response(
+                resp,
+                fallback_key=key,
+                fallback_ttl=int(ttl or 0),
+                fallback_meta=meta,
+            )
 
         except httpx.TimeoutException as e:
-            return self._maybe_fail_open("timeout", e, key, int(ttl or 0))
+            return self._maybe_fail_open("timeout", e, key, int(ttl or 0), meta=meta)
         except httpx.RequestError as e:
-            return self._maybe_fail_open("request_error", e, key, int(ttl or 0))
+            return self._maybe_fail_open("request_error", e, key, int(ttl or 0), meta=meta)
         except ApiError as e:
             # fail-open ONLY for 5xx
             if e.status_code is not None and e.status_code >= 500:
-                return self._maybe_fail_open("api_5xx", e, key, int(ttl or 0))
+                return self._maybe_fail_open("api_5xx", e, key, int(ttl or 0), meta=meta)
             raise
 
     async def check_lock_async(
         self,
         key: str,
         ttl: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         request_id: Optional[str] = None,
     ) -> CheckLockResult:
-        payload = self._make_payload(key, ttl, metadata)
+        payload = self._make_payload(key, ttl, meta)
 
         headers = {}
         if request_id:
@@ -106,16 +111,50 @@ class OnceOnly:
         client = await self._get_async_client()
         try:
             resp = await client.post("/check-lock", json=payload, headers=headers)
-            return self._parse_check_lock_response(resp, fallback_key=key, fallback_ttl=int(ttl or 0))
+            return self._parse_check_lock_response(
+                resp,
+                fallback_key=key,
+                fallback_ttl=int(ttl or 0),
+                fallback_meta=meta,
+            )
 
         except httpx.TimeoutException as e:
-            return self._maybe_fail_open("timeout", e, key, int(ttl or 0))
+            return self._maybe_fail_open("timeout", e, key, int(ttl or 0), meta=meta)
         except httpx.RequestError as e:
-            return self._maybe_fail_open("request_error", e, key, int(ttl or 0))
+            return self._maybe_fail_open("request_error", e, key, int(ttl or 0), meta=meta)
         except ApiError as e:
             if e.status_code is not None and e.status_code >= 500:
-                return self._maybe_fail_open("api_5xx", e, key, int(ttl or 0))
+                return self._maybe_fail_open("api_5xx", e, key, int(ttl or 0), meta=meta)
             raise
+
+    def me(self) -> Dict[str, Any]:
+        """
+        Get info about the current API key (plan, active status, period end, etc).
+        """
+        try:
+            resp = self._sync_client.get("/me")
+            return self._parse_json_or_raise(resp)
+        except httpx.TimeoutException as e:
+            raise ApiError("Timeout", status_code=None, detail={})
+        except httpx.RequestError as e:
+            raise ApiError(f"Request error: {e}", status_code=None, detail={})
+
+    async def me_async(self) -> Dict[str, Any]:
+        client = await self._get_async_client()
+        resp = await client.get("/me")
+        return self._parse_json_or_raise(resp)
+
+    def usage(self) -> Dict[str, Any]:
+        """
+        Get current usage counters and limits for this API key.
+        """
+        resp = self._sync_client.get("/usage")
+        return self._parse_json_or_raise(resp)
+
+    async def usage_async(self) -> Dict[str, Any]:
+        client = await self._get_async_client()
+        resp = await client.get("/usage")
+        return self._parse_json_or_raise(resp)
 
     def close(self) -> None:
         if self._own_sync:
@@ -156,13 +195,13 @@ class OnceOnly:
         self,
         key: str,
         ttl: Optional[int],
-        metadata: Optional[Dict[str, Any]],
+        meta: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"key": key}
         if ttl is not None:
             payload["ttl"] = int(ttl)
-        if metadata is not None:
-            payload["metadata"] = metadata
+        if meta is not None:
+            payload["meta"] = meta
         return payload
 
     def _maybe_fail_open(
@@ -171,11 +210,15 @@ class OnceOnly:
         err: Exception,
         key: str,
         ttl: int,
+        meta: Optional[Dict[str, Any]] = None,
     ) -> CheckLockResult:
         if not self.fail_open:
             raise
 
         logger.warning("onceonly fail-open (%s): %s", reason, err)
+        raw = {"fail_open": True, "reason": reason}
+        if meta is not None:
+            raw["meta"] = meta
         return CheckLockResult(
             locked=True,
             duplicate=False,
@@ -184,7 +227,7 @@ class OnceOnly:
             first_seen_at=None,
             request_id="fail-open",
             status_code=0,
-            raw={"fail_open": True, "reason": reason},
+            raw=raw,
         )
 
     def _parse_check_lock_response(
@@ -192,6 +235,7 @@ class OnceOnly:
         response: httpx.Response,
         fallback_key: str,
         fallback_ttl: int,
+        fallback_meta: Optional[Dict[str, Any]] = None,
     ) -> CheckLockResult:
         request_id = response.headers.get("X-Request-Id")
         oo_status = (response.headers.get("X-OnceOnly-Status") or "").strip().lower()
@@ -217,6 +261,9 @@ class OnceOnly:
             d = self._try_extract_detail(response)
             if isinstance(d, dict):
                 first_seen_at = d.get("first_seen_at")
+            raw = {"detail": d} if d is not None else {}
+            if fallback_meta is not None:
+                raw["meta"] = fallback_meta
             return CheckLockResult(
                 locked=False,
                 duplicate=True,
@@ -225,7 +272,7 @@ class OnceOnly:
                 first_seen_at=first_seen_at,
                 request_id=request_id,
                 status_code=response.status_code,
-                raw={"detail": d} if d is not None else {},
+                raw=raw,
             )
 
         if 500 <= response.status_code <= 599:
@@ -255,6 +302,10 @@ class OnceOnly:
         locked = (oo_status == "locked") or (status == "locked") or (success is True)
         duplicate = (oo_status == "duplicate") or (status == "duplicate") or (success is False)
 
+        raw = data if isinstance(data, dict) else {}
+        if fallback_meta is not None and "meta" not in raw:
+            raw["meta"] = fallback_meta
+
         return CheckLockResult(
             locked=locked,
             duplicate=duplicate,
@@ -263,7 +314,7 @@ class OnceOnly:
             first_seen_at=data.get("first_seen_at"),
             request_id=request_id,
             status_code=response.status_code,
-            raw=data if isinstance(data, dict) else {},
+            raw=raw,
         )
 
     def _try_extract_detail(self, response: httpx.Response) -> Optional[Union[Dict[str, Any], str]]:
@@ -282,6 +333,47 @@ class OnceOnly:
         if isinstance(d, str) and d.strip():
             return d
         return default
+
+    def _parse_json_or_raise(self, response: httpx.Response) -> Dict[str, Any]:
+        # auth / limits
+        if response.status_code in (401, 403):
+            raise UnauthorizedError(self._error_text(response, "Invalid API Key (Unauthorized)."))
+
+        if response.status_code == 402:
+            detail = self._try_extract_detail(response)
+            raise OverLimitError(
+                "Usage limit reached. Please upgrade your plan.",
+                detail=detail if isinstance(detail, dict) else {},
+            )
+
+        if response.status_code == 429:
+            raise RateLimitError(self._error_text(response, "Rate limit exceeded. Please slow down."))
+
+        if response.status_code == 422:
+            raise ValidationError(self._error_text(response, f"Validation Error: {response.text}"))
+
+        if 500 <= response.status_code <= 599:
+            d = self._try_extract_detail(response)
+            raise ApiError(
+                self._error_text(response, f"Server error ({response.status_code})"),
+                status_code=response.status_code,
+                detail=d if isinstance(d, dict) else {},
+            )
+
+        if response.status_code < 200 or response.status_code >= 300:
+            d = self._try_extract_detail(response)
+            raise ApiError(
+                self._error_text(response, f"API Error ({response.status_code}): {response.text}"),
+                status_code=response.status_code,
+                detail=d if isinstance(d, dict) else {},
+            )
+
+        try:
+            data = response.json()
+        except Exception:
+            data = {}
+
+        return data if isinstance(data, dict) else {"data": data}
 
 
 def create_client(

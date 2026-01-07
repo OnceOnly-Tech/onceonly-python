@@ -6,6 +6,8 @@ OnceOnly is a high-performance Python SDK designed to ensure **exactly-once exec
 It prevents duplicate actions (payments, emails, tool calls) in unstable environments like
 AI agents, webhooks, or background workers.
 
+Website - https://onceonly.tech/ai/
+
 [![PyPI version](https://img.shields.io/pypi/v/onceonly.svg)](https://pypi.org/project/onceonly/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
