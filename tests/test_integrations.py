@@ -125,6 +125,47 @@ def test_langchain_duplicate_behavior_structured(mock_client):
     assert "duplicate" in res.lower()
 
 
+def test_langchain_duplicate_does_not_call_original_tool():
+    try:
+        from langchain_core.tools import StructuredTool
+    except ImportError:
+        pytest.skip("LangChain not installed")
+
+    mock_client = MagicMock(spec=OnceOnly)
+    mock_client.check_lock.return_value = CheckLockResult(
+        locked=False,
+        duplicate=True,
+        key="k",
+        ttl=60,
+        first_seen_at="now",
+        request_id="r",
+        status_code=409,
+        raw={},
+    )
+
+    called = {"n": 0}
+
+    def refund_user(user_id: str, amount: int) -> str:
+        called["n"] += 1
+        return "original run"
+
+    original_tool = StructuredTool.from_function(
+        func=refund_user,
+        name="refund_tool",
+        description="Refunds a user",
+    )
+
+    wrapped = make_idempotent_tool(original_tool, client=mock_client, key_prefix="test_prefix")
+
+    out = wrapped.invoke({"user_id": "u_100", "amount": 50})
+
+    assert called["n"] == 0
+    assert isinstance(out, str)
+    assert "duplicate" in out.lower()
+    assert "skipped" in out.lower()
+    mock_client.check_lock.assert_called_once()
+
+
 def test_single_input_tool_supported(mock_client):
     """
     Ensure single-input tools still work.

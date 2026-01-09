@@ -1,16 +1,17 @@
 # OnceOnly Python SDK — Examples
 
 This folder contains **small, runnable examples** demonstrating how to use the OnceOnly Python SDK.
+
 Examples are organized into two groups:
 
 - `examples/general/` — core idempotency use cases (webhooks, workers, automations)
-- `examples/ai/` — AI agent and tool-calling integrations
+- `examples/ai/` — AI agents, long-running jobs, and tool-calling integrations
 
 ---
 
 ## Prerequisites
 
-1) Install the SDK (from repo root):
+1) Install the SDK (from repository root):
 
 ```bash
 pip install -e .
@@ -28,7 +29,7 @@ All examples read `ONCEONLY_API_KEY` from the environment.
 
 ## Running examples
 
-From the repository root:
+Always run examples from the repository root:
 
 ```bash
 python examples/general/basic_check_lock.py
@@ -42,7 +43,7 @@ python examples/general/basic_check_lock.py
 Minimal idempotency primitive.
 
 - First call → `locked=True`
-- Second call with same key → `duplicate=True`
+- Second call with the same key → `duplicate=True`
 
 Use this pattern for:
 - Webhooks
@@ -64,10 +65,10 @@ Demonstrates TTL behavior.
 Attaches metadata to an idempotency key.
 
 Typical metadata:
-- user_id
-- scenario_id
-- webhook_event_id
-- trace_id
+- `user_id`
+- `scenario_id`
+- `webhook_event_id`
+- `trace_id`
 
 Metadata is useful for debugging and analytics.
 If the server does not echo it back, the SDK preserves it in `result.raw`.
@@ -98,7 +99,7 @@ Designed for:
 ---
 
 ### `decorator_pydantic.py`
-Advanced decorator example with **Pydantic models**.
+Advanced decorator example using **Pydantic models**.
 
 Highlights:
 - Stable hashing for complex objects
@@ -113,7 +114,7 @@ This solves a common pain point for AI and API developers.
 Inspect account and usage information.
 
 Endpoints used:
-- `/v1/me` — API key & plan info
+- `/v1/me` — API key and plan info
 - `/v1/usage` — current usage vs limits
 
 Useful for:
@@ -123,37 +124,59 @@ Useful for:
 
 ---
 
-## AI / Agent examples (`examples/ai/`)
+## AI examples (`examples/ai/`)
 
-### `agent_guard_manual.py`
-Manual guard pattern for AI agents.
+### `run_and_wait.py`
+Canonical long-running AI job example.
 
-- Call `check_lock()` before performing a tool action
-- Abort immediately if duplicate
+- Uses `/v1/ai/run`
+- Polls status until completion
+- Charged **once per key**, polling is free
 
 Best for:
-- Custom agent loops
-- Tool routing
-- Expensive API calls
+- Background AI jobs
+- Batch processing
+- Server-side agents
 
 ---
 
-### `agent_retry_safe.py`
-Agent restart / retry safety example.
+### `agent_action_local.py`
+Local side-effect guard using the AI Lease API.
 
-- Run the script once: performs the side-effect
-- Run it again: duplicate is detected and the side-effect is skipped
+- Uses `/v1/ai/lease`
+- Executes the side-effect locally
+- Ensures exactly-once execution across retries and crashes
 
-This is a core pattern for autonomous agents that can crash, retry, or resume.
+Best for:
+- Payments
+- Emails
+- Webhooks triggered by agents
 
 ---
 
-### `langchain_tool.py`
-LangChain integration example.
+### `poll_status.py`
+Polling example for AI jobs.
 
-- Wraps a standard LangChain `Tool`
-- Automatically enforces idempotency
-- Prevents double execution of side-effects
+- Uses `/v1/ai/status`
+- Demonstrates `retry_after_sec` and adaptive polling
+
+---
+
+### `get_result.py`
+Fetches the final result of a completed AI job.
+
+- Uses `/v1/ai/result`
+- Safe to call multiple times
+
+---
+
+### `langchain_tool_ai_lease.py`
+LangChain integration example using the AI Lease API.
+
+- Wraps a LangChain tool
+- Guarantees exactly-once tool execution
+- Prevents double side-effects
+- Protects against LLM 'hallucinations' causing multiple tool calls
 
 Optional dependency:
 
@@ -161,35 +184,21 @@ Optional dependency:
 pip install langchain-core
 ```
 
-Works well with:
-- LangChain agents
-- Tool-calling LLMs
-- Multi-step plans
-
----
-
-### `long_running_job.py`
-Long-running AI / backend job example.
-
-- Uses OnceOnly AI client helpers
-- Demonstrates run → poll → wait pattern
-- Suitable for batch AI jobs or background processing
-
 ---
 
 ## Design tips
 
-- **Key design:** Model keys after real-world actions  
+- **Key design:** model keys after real-world actions  
   Example:
   ```
   agent:email:user42:welcome
-  make:scenario:123:event:evt_abc
+  ai:job:daily_summary:2026-01-09
   ```
 
-- **TTL:** Choose TTL based on how long a duplicate would be dangerous
+- **TTL:** choose TTL based on how long a duplicate would be dangerous
 
-- **Fail-open:**  
-  - `fail_open=True` (default): safer for production workflows  
+- **Fail-open behavior:**
+  - `fail_open=True` (default): safer for production workflows
   - `fail_open=False`: strict correctness for critical paths
 
 ---
@@ -197,10 +206,10 @@ Long-running AI / backend job example.
 ## Troubleshooting
 
 - **401 / 403** — invalid or missing API key
-- **402** — plan limit reached
-- **429** — rate limit exceeded (backoff & retry)
+- **402** — plan or usage limit reached
+- **429** — rate limit exceeded (retry with backoff)
 - **5xx** — server error (fail-open may apply)
 
 ---
 
-If you need an additional example, open an issue or PR.
+If you need additional examples, open an issue or submit a PR.

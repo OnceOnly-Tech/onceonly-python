@@ -149,3 +149,30 @@ def test_500_non_json_body():
     resp = mk_response(500, text="<html>502 Bad Gateway</html>")
     with pytest.raises(ApiError):
         c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=60)
+
+
+def test_header_locked_without_body_json():
+    c = OnceOnly("k")
+    resp = mk_response(
+        200,
+        json_data={},  # empty body, but header says locked
+        headers={"X-OnceOnly-Status": "locked", "X-Request-Id": "rid_locked"},
+    )
+    r = c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=60)
+    assert r.locked is True
+    assert r.duplicate is False
+    assert r.request_id == "rid_locked"
+
+
+def test_ttl_fallback_when_missing_in_json():
+    c = OnceOnly("k")
+    resp = mk_response(
+        200,
+        json_data={"success": True, "status": "locked", "key": "a"},  # no ttl
+        headers={"X-OnceOnly-Status": "locked", "X-Request-Id": "rid_ttl"},
+    )
+    r = c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=123)
+    assert r.locked is True
+    assert r.duplicate is False
+    assert r.ttl == 123
+    assert r.request_id == "rid_ttl"

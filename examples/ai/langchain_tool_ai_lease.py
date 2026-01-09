@@ -1,7 +1,6 @@
 import os
 
 from onceonly import OnceOnly
-from onceonly.integrations.langchain import make_idempotent_tool
 
 # Optional dependency:
 #   pip install langchain-core
@@ -30,19 +29,30 @@ original_tool = StructuredTool.from_function(
     description="Refunds a user payment (side-effect)",
 )
 
-safe_tool = make_idempotent_tool(
-    original_tool,
-    client=client,
-    key_prefix="ai:tool",
-    ttl=3600,
-    meta={"agent": "demo", "trace_id": "trace_123"},
-)
+
+def invoke_once(inputs: dict) -> str:
+    # Stable, human-readable key (NOT args hash)
+    key = f"ai:tool:refund:{inputs['user_id']}:{inputs['amount']}"
+
+    lease = client.ai.lease(key=key, ttl=3600, metadata={"agent": "demo", "trace_id": "trace_123"})
+    if lease.get("status") != "acquired":
+        return "duplicate_blocked"
+
+    lease_id = lease.get("lease_id")
+    try:
+        out = original_tool.invoke(inputs)
+        client.ai.complete(key=key, lease_id=lease_id, result={"ok": True, "output": out})
+        return out
+    except Exception:
+        client.ai.fail(key=key, lease_id=lease_id, error_code="tool_error")
+        raise
+
 
 print("--- 1st execution ---")
-print(safe_tool.invoke({"user_id": "u_102", "amount": 50}))
+print(invoke_once({"user_id": "u_102", "amount": 50}))
 
 print("\n--- 2nd execution (duplicate) ---")
-print(safe_tool.invoke({"user_id": "u_102", "amount": 50}))
+print(invoke_once({"user_id": "u_102", "amount": 50}))
 
 print("\n--- 3rd execution (different args) ---")
-print(safe_tool.invoke({"user_id": "u_777", "amount": 50}))
+print(invoke_once({"user_id": "u_777", "amount": 50}))
