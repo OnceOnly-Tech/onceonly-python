@@ -16,7 +16,8 @@ Documentation: https://onceonly.tech/docs/
 - Sync + Async client (httpx-based)
 - Fail-open mode for production safety
 - Stable idempotency keys (supports Pydantic & dataclasses)
-- Decorator for zero-boilerplate usage
+- Decorators for zero-boilerplate usage
+- Native AI API (long-running jobs, local side-effects)
 - Optional AI / LangChain integrations
 
 ---
@@ -35,7 +36,7 @@ pip install "onceonly-sdk[langchain]"
 
 ---
 
-## Quick Start
+## Quick Start (Webhooks / Automations)
 
 ```python
 from onceonly import OnceOnly
@@ -53,11 +54,54 @@ else:
     print("First execution")
 ```
 
+Use `check_lock()` for:
+- Webhooks
+- Make / Zapier scenarios
+- Cron jobs
+- Distributed workers
+
 ---
 
-## AI Agents / LangChain Integration 🤖
+## AI Jobs (Server-side)
 
-OnceOnly integrates cleanly with AI-agent frameworks like LangChain.
+Use the AI API for long-running or asynchronous jobs.
+
+```python
+result = client.ai.run_and_wait(
+    key="ai:job:daily_summary:2026-01-09",
+    metadata={"task": "daily_summary", "model": "gpt-4.1"},
+    timeout=60,
+)
+
+print(result.status)
+print(result.result)
+```
+
+- Charged **once per key**
+- Polling is free
+- Safe across retries and restarts
+
+---
+
+## AI Agents / Local Side-Effects
+
+Use the AI Lease API when your code performs the side-effect locally
+(payments, emails, webhooks) but still needs exactly-once guarantees.
+
+```python
+lease = client.ai.lease(key="ai:agent:charge:user_42:invoice_100", ttl=300)
+
+if lease["status"] == "acquired":
+    try:
+        do_side_effect()
+        client.ai.complete(key=KEY, lease_id=lease["lease_id"], result={"ok": True})
+    except Exception:
+        client.ai.fail(key=KEY, lease_id=lease["lease_id"], error_code="failed")
+```
+
+---
+
+## LangChain Integration 🤖
 
 ```python
 from onceonly.integrations.langchain import make_idempotent_tool
@@ -69,11 +113,14 @@ tool = make_idempotent_tool(
 )
 ```
 
-Repeated tool calls with the same inputs will execute **exactly once**, even across retries or agent restarts.
+Repeated tool calls with the same inputs will execute **exactly once**,
+even across retries or agent restarts.
+
+See `examples/ai/` for canonical patterns.
 
 ---
 
-## Decorator
+## Decorators
 
 ```python
 from onceonly.decorators import idempotent
@@ -83,7 +130,7 @@ def process_order(order_id):
     ...
 ```
 
-Idempotency keys are generated automatically and are stable across restarts.
+Idempotency keys are generated automatically and remain stable across restarts.
 
 ---
 
