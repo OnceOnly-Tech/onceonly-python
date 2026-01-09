@@ -9,6 +9,8 @@ AI agents, webhooks, retries, or background workers.
 Website: https://onceonly.tech/ai/  
 Documentation: https://onceonly.tech/docs/
 
+[![PyPI version](https://img.shields.io/pypi/v/onceonly-sdk.svg)](https://pypi.org/project/onceonly-sdk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ---
 
 ## Features
