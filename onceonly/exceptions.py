@@ -12,7 +12,7 @@ class UnauthorizedError(OnceOnlyError):
 
 
 class OverLimitError(OnceOnlyError):
-    """402 Free plan limit reached."""
+    """402 Plan usage limit reached."""
 
     def __init__(self, message: str, detail: Optional[Dict[str, Any]] = None):
         super().__init__(message)
@@ -21,6 +21,10 @@ class OverLimitError(OnceOnlyError):
 
 class RateLimitError(OnceOnlyError):
     """429 Rate limit exceeded."""
+
+    def __init__(self, message: str, retry_after_sec: Optional[float] = None):
+        super().__init__(message)
+        self.retry_after_sec = retry_after_sec
 
 
 class ValidationError(OnceOnlyError):

@@ -85,18 +85,23 @@ def test_402_over_limit():
     with pytest.raises(OverLimitError) as e:
         c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=60)
 
-    # message
-    assert "upgrade" in str(e.value).lower() or "limit" in str(e.value).lower()
-    # detail dict preserved
+    msg = str(e.value).lower()
+    assert "upgrade" in msg or "limit" in msg
     assert isinstance(e.value.detail, dict)
     assert e.value.detail.get("plan") == "free"
 
 
-def test_429_rate_limit():
+def test_429_rate_limit_retry_after():
     c = OnceOnly("k")
-    resp = mk_response(429, json_data={"detail": "Rate limit exceeded"})
-    with pytest.raises(RateLimitError):
+    resp = mk_response(
+        429,
+        json_data={"detail": "Rate limit exceeded"},
+        headers={"Retry-After": "15"},
+    )
+    with pytest.raises(RateLimitError) as e:
         c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=60)
+
+    assert e.value.retry_after_sec == 15.0
 
 
 def test_401_unauthorized():
@@ -123,5 +128,24 @@ def test_422_validation():
 def test_other_api_error():
     c = OnceOnly("k")
     resp = mk_response(500, json_data={"detail": "boom"})
+    with pytest.raises(ApiError):
+        c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=60)
+
+
+def test_header_duplicate_without_json():
+    c = OnceOnly("k")
+    resp = mk_response(
+        200,
+        json_data={},
+        headers={"X-OnceOnly-Status": "duplicate", "X-Request-Id": "rid4"},
+    )
+    r = c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=60)
+    assert r.duplicate is True
+    assert r.locked is False
+
+
+def test_500_non_json_body():
+    c = OnceOnly("k")
+    resp = mk_response(500, text="<html>502 Bad Gateway</html>")
     with pytest.raises(ApiError):
         c._parse_check_lock_response(resp, fallback_key="a", fallback_ttl=60)

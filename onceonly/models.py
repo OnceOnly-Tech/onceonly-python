@@ -14,3 +14,14 @@ class CheckLockResult:
     request_id: Optional[str]
     status_code: int
     raw: Dict[str, Any]
+
+    def should_proceed(self) -> bool:
+        """
+        Helper for agents/tools:
+        - True => proceed with the expensive/side-effect operation
+        - False => treat as duplicate (or blocked)
+        """
+        return bool(self.locked) and not bool(self.duplicate)
+
+    def is_duplicate(self) -> bool:
+        return bool(self.duplicate)
