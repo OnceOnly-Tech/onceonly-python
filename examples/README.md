@@ -5,7 +5,10 @@ This folder contains **small, runnable examples** demonstrating how to use the O
 Examples are organized into two groups:
 
 - `examples/general/` — core idempotency use cases (webhooks, workers, automations)
-- `examples/ai/` — AI agents, long-running jobs, and tool-calling integrations
+- `examples/ai/` — AI agents, long-running jobs, and tool-calling integrations. 
+
+These examples address common AI agent failure modes such as
+duplicate tool calls, retries after timeouts, and agent restarts.
 
 ---
 
