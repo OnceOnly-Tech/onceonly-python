@@ -6,11 +6,27 @@ OnceOnly is a high-performance Python SDK that ensures **exactly-once execution*
 It prevents duplicate actions (payments, emails, tool calls) in unstable environments like
 AI agents, webhooks, retries, or background workers.
 
+
 Website: https://onceonly.tech/ai/  
 Documentation: https://onceonly.tech/docs/
 
 [![PyPI version](https://img.shields.io/pypi/v/onceonly-sdk.svg)](https://pypi.org/project/onceonly-sdk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+---
+
+## Why duplicates happen
+
+Duplicate actions are common in modern systems because:
+- AI agents retry or re-plan tool calls
+- Webhooks are delivered more than once
+- Workers crash after side-effects
+- Distributed systems replay events
+
+Without an idempotency layer, the same action may run multiple times.
+
+OnceOnly is designed to guard side-effects in non-deterministic AI agent loops,
+where the same tool call may be executed multiple times.
+
 ---
 
 ## Features
@@ -21,6 +37,17 @@ Documentation: https://onceonly.tech/docs/
 - Decorators for zero-boilerplate usage
 - Native AI API (long-running jobs, local side-effects)
 - Optional AI / LangChain integrations
+
+---
+
+## FAQ
+
+**Does this prevent duplicate payments or emails?**  
+Yes. OnceOnly guarantees exactly-once execution for side-effects.
+
+**Is this a retry library?**  
+No. Retries still happen — OnceOnly ensures the action itself runs only once.
+
 
 ---
 
