@@ -12,7 +12,8 @@ client = OnceOnly(api_key=API_KEY)
 @idempotent(
     client=client,
     key_prefix="example:async",
-    ttl=60
+    ttl=60,
+    return_value_on_duplicate="DUPLICATE"
 )
 async def charge_customer(customer_id: str, amount: int) -> str:
     print(f"  >>> Charging {customer_id} ${amount}...")
@@ -24,7 +25,7 @@ async def main():
     res1 = await charge_customer("c_1", 100)
     print(f"Result: {res1}")
 
-    print("\n--- 2. Duplicate Charge (Should return None by default) ---")
+    print("\n--- 2. Duplicate Charge ( Returns 'DUPLICATE') ---")
     res2 = await charge_customer("c_1", 100)
     print(f"Result: {res2}")
 

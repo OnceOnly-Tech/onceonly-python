@@ -11,6 +11,8 @@ if not API_KEY:
 
 client = OnceOnly(api_key=API_KEY)
 
+MODE = os.getenv("EXAMPLE_MODE", "lease")  # lease | decorator
+
 
 def refund_payment(user_id: str, amount: int) -> str:
     print(f"  >>> [SIDE EFFECT] Refunding ${amount} to {user_id}")
@@ -48,11 +50,32 @@ def invoke_once(inputs: dict) -> str:
         raise
 
 
-print("--- 1st execution ---")
-print(invoke_once({"user_id": "u_102", "amount": 50}))
+if MODE == "lease":
+    print("--- 1st execution ---")
+    print(invoke_once({"user_id": "u_102", "amount": 50}))
 
-print("\n--- 2nd execution (duplicate) ---")
-print(invoke_once({"user_id": "u_102", "amount": 50}))
+    print("\n--- 2nd execution (duplicate) ---")
+    print(invoke_once({"user_id": "u_102", "amount": 50}))
 
-print("\n--- 3rd execution (different args) ---")
-print(invoke_once({"user_id": "u_777", "amount": 50}))
+    print("\n--- 3rd execution (different args) ---")
+    print(invoke_once({"user_id": "u_777", "amount": 50}))
+
+
+from onceonly import idempotent_ai
+
+
+@idempotent_ai(
+    client,
+    key_fn=lambda user_id, amount: f"ai:tool:refund:{user_id}:{amount}",
+    ttl=3600,
+    metadata_fn=lambda user_id, amount: {"agent": "demo", "trace_id": "trace_123"},
+)
+def refund_tool(user_id: str, amount: int) -> str:
+    print(f"  >>> [SIDE EFFECT] Refunding ${amount} to {user_id}")
+    return "refund_processed"
+
+
+if MODE == "decorator":
+    print("\n--- Decorator version ---")
+    print(refund_tool("u_102", 50))
+    print(refund_tool("u_102", 50))  # duplicate

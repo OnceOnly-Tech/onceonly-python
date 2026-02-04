@@ -16,6 +16,7 @@ from ._http import (
 )
 from .exceptions import ApiError, UnauthorizedError, OverLimitError, RateLimitError, ValidationError
 from .ai import AiClient
+from .governance import GovernanceClient
 from .version import __version__
 from ._util import to_metadata_dict, MetadataLike
 
@@ -88,6 +89,14 @@ class OnceOnly:
             retry_max_backoff=self._retry_max_backoff,
         )
 
+        self.gov = GovernanceClient(
+            self._sync_client,
+            self._get_async_client,
+            max_retries_429=self._max_retries_429,
+            retry_backoff=self._retry_backoff,
+            retry_max_backoff=self._retry_max_backoff,
+        )
+
     # ---------- Public API ----------
 
     def check_lock(
@@ -150,10 +159,10 @@ class OnceOnly:
             raise
 
     # thin wrapper for agent UX
-    def ai_run_and_wait(self, key: str, **kwargs):
+    def ai_run_and_wait(self, key: Optional[str] = None, **kwargs):
         return self.ai.run_and_wait(key=key, **kwargs)
 
-    async def ai_run_and_wait_async(self, key: str, **kwargs):
+    async def ai_run_and_wait_async(self, key: Optional[str] = None, **kwargs):
         return await self.ai.run_and_wait_async(key=key, **kwargs)
 
     def me(self) -> Dict[str, Any]:
@@ -188,6 +197,63 @@ class OnceOnly:
         client = await self._get_async_client()
         resp = await request_with_retries_async(
             lambda: client.get("/usage", params={"kind": kind}),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    def usage_all(self) -> Dict[str, Any]:
+        resp = request_with_retries_sync(
+            lambda: self._sync_client.get("/usage/all"),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    async def usage_all_async(self) -> Dict[str, Any]:
+        client = await self._get_async_client()
+        resp = await request_with_retries_async(
+            lambda: client.get("/usage/all"),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    def events(self, limit: int = 50) -> Any:
+        resp = request_with_retries_sync(
+            lambda: self._sync_client.get("/events", params={"limit": int(limit)}),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    async def events_async(self, limit: int = 50) -> Any:
+        client = await self._get_async_client()
+        resp = await request_with_retries_async(
+            lambda: client.get("/events", params={"limit": int(limit)}),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    def metrics(self, from_day: str, to_day: str) -> Any:
+        resp = request_with_retries_sync(
+            lambda: self._sync_client.get("/metrics", params={"from_day": from_day, "to_day": to_day}),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    async def metrics_async(self, from_day: str, to_day: str) -> Any:
+        client = await self._get_async_client()
+        resp = await request_with_retries_async(
+            lambda: client.get("/metrics", params={"from_day": from_day, "to_day": to_day}),
             max_retries=self._max_retries_429,
             base_backoff=self._retry_backoff,
             max_backoff=self._retry_max_backoff,
@@ -321,8 +387,15 @@ class OnceOnly:
         status = str(data.get("status") or "").strip().lower()
         success = data.get("success")
 
-        locked = (oo_status == "locked") or (status == "locked") or (success is True)
-        duplicate = (oo_status == "duplicate") or (status == "duplicate") or (success is False)
+        if status in ("locked", "duplicate"):
+            locked = status == "locked"
+            duplicate = status == "duplicate"
+        elif oo_status in ("locked", "duplicate"):
+            locked = oo_status == "locked"
+            duplicate = oo_status == "duplicate"
+        else:
+            locked = bool(success)
+            duplicate = not bool(success)
 
         raw = data if isinstance(data, dict) else {}
         md = to_metadata_dict(fallback_meta)

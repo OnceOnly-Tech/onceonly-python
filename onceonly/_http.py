@@ -78,10 +78,21 @@ def request_with_retries_sync(
     base_backoff: float,
     max_backoff: float,
 ) -> httpx.Response:
+    RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
     attempt = 0
     while True:
-        resp = fn()
-        if resp.status_code != 429 or attempt >= max_retries:
+        try:
+            resp = fn()
+        except httpx.RequestError:
+            if attempt >= max_retries:
+                raise
+            sleep_s = min(max_backoff, base_backoff * (2**attempt))
+            time.sleep(max(0.0, float(sleep_s)))
+            attempt += 1
+            continue
+
+        if resp.status_code not in RETRYABLE_STATUS or attempt >= max_retries:
             return resp
 
         ra = _parse_retry_after(resp)
@@ -97,10 +108,21 @@ async def request_with_retries_async(
     base_backoff: float,
     max_backoff: float,
 ) -> httpx.Response:
+    RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
     attempt = 0
     while True:
-        resp = await fn()
-        if resp.status_code != 429 or attempt >= max_retries:
+        try:
+            resp = await fn()
+        except httpx.RequestError:
+            if attempt >= max_retries:
+                raise
+            sleep_s = min(max_backoff, base_backoff * (2**attempt))
+            await asyncio.sleep(max(0.0, float(sleep_s)))
+            attempt += 1
+            continue
+
+        if resp.status_code not in RETRYABLE_STATUS or attempt >= max_retries:
             return resp
 
         ra = _parse_retry_after(resp)

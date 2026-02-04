@@ -15,6 +15,9 @@ class AiRun:
     key: str
     lease_id: Optional[str] = None
     version: int = 0
+    ttl: Optional[int] = None
+    ttl_left: Optional[int] = None
+    first_seen_at: Optional[str] = None
     charged: Optional[int] = None
     usage: Optional[int] = None
     limit: Optional[int] = None
@@ -32,6 +35,9 @@ class AiRun:
             key=str(d.get("key") or ""),
             lease_id=d.get("lease_id"),
             version=int(d.get("version") or 0),
+            ttl=d.get("ttl"),
+            ttl_left=d.get("ttl_left"),
+            first_seen_at=d.get("first_seen_at"),
             charged=d.get("charged"),
             usage=d.get("usage"),
             limit=d.get("limit"),
@@ -94,4 +100,25 @@ class AiResult:
             result_hash=d.get("result_hash"),
             error_code=d.get("error_code"),
             done_at=d.get("done_at"),
+        )
+
+
+@dataclass(frozen=True)
+class AiToolResult:
+    ok: bool
+    allowed: bool
+    decision: str
+    policy_reason: Optional[str] = None
+    risk_level: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def from_dict(d: Dict[str, Any]) -> "AiToolResult":
+        return AiToolResult(
+            ok=bool(d.get("ok", False)),
+            allowed=bool(d.get("allowed", False)),
+            decision=str(d.get("decision") or ""),
+            policy_reason=d.get("policy_reason"),
+            risk_level=d.get("risk_level"),
+            result=_dict_or_none(d.get("result")),
         )

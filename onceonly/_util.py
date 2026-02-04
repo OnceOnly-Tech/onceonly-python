@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from dataclasses import is_dataclass, asdict
 from typing import Any, Dict, Mapping, Optional, Union
 
@@ -39,7 +41,7 @@ def to_metadata_dict(metadata: Optional[MetadataLike]) -> Optional[Dict[str, Any
     # mapping
     if isinstance(metadata, Mapping):
         try:
-            return dict(metadata)
+            return json.loads(json.dumps(dict(metadata), ensure_ascii=False, default=str))
         except Exception:
             return {"value": str(metadata)}
 

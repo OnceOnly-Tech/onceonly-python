@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onceonly-sdk"
-version = "2.0.2"
+version = "3.0.0"
 description = "Python SDK for OnceOnly idempotency API"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -25,7 +25,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://onceonly.tech/"
-Documentation = "https://onceonly.tech/docs/"
+Documentation = "https://docs.onceonly.tech"
 Repository = "https://github.com/mykolademyanov/onceonly-python"
 
 [project.optional-dependencies]
@@ -35,3 +35,6 @@ langchain = ["langchain-core>=0.1.0"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+  "integration: live API smoke tests (requires TEST_API_KEY)"
+]
