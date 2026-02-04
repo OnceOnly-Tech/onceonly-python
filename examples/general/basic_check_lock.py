@@ -14,7 +14,7 @@ print("== 1st call ==")
 r1 = client.check_lock(key=key, ttl=60)
 print(f"locked={r1.locked} duplicate={r1.duplicate} ttl={r1.ttl} request_id={r1.request_id}")
 
-if r1.locked:
+if r1.should_proceed():
     print(">>> Execute the side-effect now (charge/email/refund/etc.)")
 else:
     print(">>> Skipped")

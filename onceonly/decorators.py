@@ -5,13 +5,17 @@ import inspect
 import json
 import hashlib
 import logging
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar, Awaitable, Union
 
 from .client import OnceOnly
+from ._util import MetadataLike
+from .ai_models import AiResult
 
 logger = logging.getLogger("onceonly")
 
 T = TypeVar("T")
+KeyFn = Callable[..., str]
+MetaFn = Callable[..., Optional[MetadataLike]]
 
 
 def _truncate(s: str, max_len: int = 2048) -> str:
@@ -170,5 +174,87 @@ def idempotent(
             return func(*args, **kwargs)
 
         return sync_wrapper  # type: ignore[return-value]
+
+    return decorator
+
+def idempotent_ai(
+    client: OnceOnly,
+    *,
+    key: Optional[str] = None,
+    key_fn: Optional[KeyFn] = None,
+    ttl: int = 300,
+    metadata: Optional[MetadataLike] = None,
+    metadata_fn: Optional[MetaFn] = None,
+    extend_every: float = 30.0,
+    wait_on_conflict: bool = True,
+    timeout: float = 60.0,
+    poll_min: float = 0.5,
+    poll_max: float = 5.0,
+    error_code: str = "fn_error",
+) -> Callable[[Callable[..., Any]], Callable[..., Union[AiResult, Awaitable[AiResult]]]]:
+    """
+    AI Lease decorator (exactly-once local execution).
+
+    Provide either:
+      - key="fixed:key"
+      - key_fn(*args, **kwargs) -> str
+    """
+
+    if key is None and key_fn is None:
+        raise ValueError("idempotent_ai requires either key=... or key_fn=...")
+
+    def _make_key(args: tuple, kwargs: dict) -> str:
+        if key is not None:
+            return str(key)
+        assert key_fn is not None
+        return str(key_fn(*args, **kwargs))
+
+    def _make_meta(args: tuple, kwargs: dict) -> Optional[MetadataLike]:
+        if metadata_fn is not None:
+            return metadata_fn(*args, **kwargs)
+        return metadata
+
+    def decorator(fn: Callable[..., Any]):
+        if inspect.iscoroutinefunction(fn):
+
+            @functools.wraps(fn)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> AiResult:
+                k = _make_key(args, kwargs)
+                md = _make_meta(args, kwargs)
+
+                return await client.ai.run_fn_async(
+                    key=k,
+                    fn=lambda: fn(*args, **kwargs),  # returns awaitable; run_fn_async awaits it
+                    ttl=int(ttl),
+                    metadata=md,
+                    extend_every=float(extend_every),
+                    wait_on_conflict=bool(wait_on_conflict),
+                    timeout=float(timeout),
+                    poll_min=float(poll_min),
+                    poll_max=float(poll_max),
+                    error_code=str(error_code),
+                )
+
+            return async_wrapper
+
+        @functools.wraps(fn)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> AiResult:
+            k = _make_key(args, kwargs)
+            md = _make_meta(args, kwargs)
+
+            return client.ai.run_fn(
+                key=k,
+                fn=lambda: fn(*args, **kwargs),
+                ttl=int(ttl),
+                metadata=md,
+                extend_every=float(extend_every),
+                wait_on_conflict=bool(wait_on_conflict),
+                timeout=float(timeout),
+                poll_min=float(poll_min),
+                poll_max=float(poll_max),
+                error_code=str(error_code),
+            )
+
+        return sync_wrapper
 
     return decorator
