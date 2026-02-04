@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
 ## [Unreleased]
+
+## [3.0.1] - 2026-02-04
 - Added Tools Registry methods to the SDK (create/list/get/toggle/delete).
 - Added tool-runner and full LLM agent flow examples.
 - Added plan limits and Pro vs Agency notes in docs.
