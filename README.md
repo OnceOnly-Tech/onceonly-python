@@ -10,7 +10,7 @@ Exactly-once execution + runtime safety + agent control plane.
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[Website](https://onceonly.tech/) • [Docs](https://docs.onceonly.tech) • [API Reference](https://docs.onceonly.tech/api) • [Examples](./examples/)
+[Website](https://onceonly.tech/) • [Docs](https://docs.onceonly.tech) • [API Reference](https://docs.onceonly.tech/reference/idempotency/) • [Examples](./examples/)
 
 </div>
 
@@ -959,7 +959,7 @@ Before going live:
 
 - **Website:** https://onceonly.tech
 - **Documentation:** https://docs.onceonly.tech
-- **API Reference:** https://docs.onceonly.tech/api
+- **API Reference:** https://docs.onceonly.tech/reference/idempotency/
 - **Python SDK Docs:** https://docs.onceonly.tech/sdk/python
 - **GitHub:** https://github.com/onceonly-tech/onceonly-python
 - **PyPI:** https://pypi.org/project/onceonly-sdk/
