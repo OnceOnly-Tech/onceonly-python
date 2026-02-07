@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-02-07
+- Documentation updates (README links and references).
+- Minor client compatibility improvements (base_url normalization, clearer 403 feature gating).
+
 ## [3.0.1] - 2026-02-04
 - Added Tools Registry methods to the SDK (create/list/get/toggle/delete).
 - Added tool-runner and full LLM agent flow examples.
