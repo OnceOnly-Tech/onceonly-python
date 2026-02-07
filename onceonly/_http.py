@@ -42,7 +42,18 @@ def _parse_retry_after(resp: httpx.Response) -> Optional[float]:
 
 def parse_json_or_raise(resp: httpx.Response) -> Dict[str, Any]:
     # typed errors
-    if resp.status_code in (401, 403):
+    if resp.status_code == 401:
+        raise UnauthorizedError(error_text(resp, "Invalid API Key (Unauthorized)."))
+
+    if resp.status_code == 403:
+        d = try_extract_detail(resp)
+        # Backend uses 403 both for invalid/disabled API keys and for feature gating.
+        if isinstance(d, dict) and d.get("error") == "feature_not_available":
+            raise ApiError(
+                error_text(resp, "Feature not available for this plan."),
+                status_code=403,
+                detail=d,
+            )
         raise UnauthorizedError(error_text(resp, "Invalid API Key (Unauthorized)."))
 
     if resp.status_code == 402:

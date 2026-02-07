@@ -47,7 +47,7 @@ print("Disabling agent...")
 st1 = client.gov.disable_agent(agent_id, reason="Manual safety stop (example)")
 print("Status after disable:", st1)
 
-print("Agent disabled. All tool calls should now return 403 until enabled.")
+print("Agent disabled. Tool calls should now be blocked (ai.run_tool -> allowed=False) until enabled.")
 
 print("Re-enabling agent...")
 st2 = client.gov.enable_agent(agent_id, reason="Resume operations (example)")
