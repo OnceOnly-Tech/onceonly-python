@@ -27,7 +27,7 @@ print("\nThis agent CANNOT call:")
 print("  ✗ stripe.charge")
 print("  ✗ delete_user")
 
-print("\nIf the agent tries to call a blocked tool, the API will return a 403.")
+print("\nIf the agent tries to call a blocked tool via ai.run_tool(), you'll get allowed=False with a policy_reason.")
 
 # Optional: execute a tool (requires the tool to be registered in your account)
 # res = client.ai.run_tool(

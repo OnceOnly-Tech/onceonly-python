@@ -288,7 +288,7 @@ This agent CANNOT call:
   ✗ stripe.charge
   ✗ delete_user
 
-If the agent tries to call a blocked tool, the API will return a 403.
+If the agent tries to call a blocked tool via `ai.run_tool`, you'll get `allowed=False` with a `policy_reason`.
 ```
 
 **When to use:**
@@ -917,7 +917,7 @@ max_spend_usd_per_day = 500.00
 ## 📚 Additional Resources
 
 - **Main README:** [`../README.md`](../README.md)
-- **API Docs:** https://docs.onceonly.tech/api
+- **API Docs:** https://docs.onceonly.tech/reference/idempotency/
 - **SDK Reference:** https://docs.onceonly.tech/sdk/python
 - **Dashboard:** https://onceonly.tech/dashboard
 - **Governance Guide:** https://docs.onceonly.tech/governance
@@ -932,7 +932,7 @@ max_spend_usd_per_day = 500.00
 | 200 | — | Success | ✅ Proceed |
 | 401 | `UnauthorizedError` | Invalid API key | Check `ONCEONLY_API_KEY` |
 | 402 | `OverLimitError` | Usage/budget limit | Upgrade plan or increase budget |
-| 403 | `PolicyBlockedError` | Agent blocked by policy | Check governance logs |
+| 403 | `ApiError` | Forbidden / feature gating | Check plan + `error=feature_not_available` |
 | 422 | `ValidationError` | Bad request | Fix parameters |
 | 429 | `RateLimitError` | Rate limit | Enable retries |
 | 500+ | `ApiError` | Server error | Retry or fail-open |

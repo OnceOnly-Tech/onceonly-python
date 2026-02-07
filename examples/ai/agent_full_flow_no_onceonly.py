@@ -12,7 +12,7 @@ Run this file twice or simulate a retry to see duplicates.
 import os
 import random
 import time
-import requests
+import httpx
 
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 TOOL_ENDPOINT = os.getenv("TOOL_ENDPOINT", "https://example.com/tools/charge")
@@ -23,9 +23,10 @@ def llm_decide() -> dict:
 
 def call_tool(payload: dict) -> dict:
     # No idempotency key. A retry repeats the charge.
-    resp = requests.post(TOOL_ENDPOINT, json=payload, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
+    with httpx.Client(timeout=10.0) as c:
+        resp = c.post(TOOL_ENDPOINT, json=payload)
+        resp.raise_for_status()
+        return resp.json()
 
 def main() -> None:
     decision = llm_decide()

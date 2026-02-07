@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlparse
 from typing import Optional, Dict, Any
 
 import httpx
@@ -52,7 +53,16 @@ class OnceOnly:
         async_transport: Optional[httpx.AsyncBaseTransport] = None,
     ):
         self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
+        base_url = base_url.rstrip("/")
+        # Accept both "https://api.onceonly.tech" and ".../v1" (and keep custom paths intact).
+        try:
+            p = urlparse(base_url)
+            if (p.path or "") in ("", "/"):
+                base_url = base_url + "/v1"
+        except Exception:
+            pass
+
+        self.base_url = base_url
         self.timeout = timeout
         self.fail_open = fail_open
 
