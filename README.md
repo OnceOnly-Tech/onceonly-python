@@ -961,7 +961,7 @@ Before going live:
 - **Documentation:** https://docs.onceonly.tech
 - **API Reference:** https://docs.onceonly.tech/reference/idempotency/
 - **Python SDK Docs:** https://docs.onceonly.tech/sdk/python
-- **GitHub:** https://github.com/onceonly-tech/onceonly-python
+- **GitHub:** https://github.com/OnceOnly-Tech/onceonly-python
 - **PyPI:** https://pypi.org/project/onceonly-sdk/
 - **Support:** support@onceonly.tech
 
@@ -995,7 +995,7 @@ pytest -q -m integration
 
 ## ⭐ Support
 
-If OnceOnly helps your project, give us a star on [GitHub](https://github.com/onceonly-tech/onceonly-python)!
+If OnceOnly helps your project, give us a star on [GitHub](https://github.com/OnceOnly-Tech/onceonly-python)!
 
 Questions? Open an issue or email support@onceonly.tech
 
@@ -1004,4 +1004,3 @@ Questions? Open an issue or email support@onceonly.tech
 <div align="center">
 <sub>Built with ❤️ by the OnceOnly team</sub>
 </div>
-
