@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [3.0.3] - 2026-03-10
+- Updated repository links after migration to GitHub org `OnceOnly-Tech/onceonly-python`.
+- Updated package metadata repository URL used by PyPI project links.
+
 ## [3.0.2] - 2026-02-07
 - Documentation updates (README links and references).
 - Minor client compatibility improvements (base_url normalization, clearer 403 feature gating).
