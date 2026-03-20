@@ -1,5 +1,5 @@
 <div align="center">
-# OnceOnly Python SDK
+<h1>OnceOnly Python SDK</h1>
 
 **AI Agent Execution & Governance Layer**
 
