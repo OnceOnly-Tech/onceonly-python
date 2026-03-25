@@ -85,6 +85,15 @@ class AiClient:
 
         return {"value": str(value)}
 
+    @staticmethod
+    def _normalize_run_id(run_id: Optional[str]) -> Optional[str]:
+        if run_id is None:
+            return None
+        out = str(run_id).strip()
+        if not out:
+            raise ValueError("run_id must not be empty")
+        return out
+
     def _start_heartbeat_thread(
             self,
             *,
@@ -139,13 +148,18 @@ class AiClient:
         tool: Optional[str] = None,
         args: Optional[Dict[str, Any]] = None,
         spend_usd: Optional[float] = None,
+        run_id: Optional[str] = None,
     ) -> Union[AiRun, AiToolResult]:
+        run_id_norm = self._normalize_run_id(run_id)
         if key is None:
             if not agent_id or not tool:
                 raise ValueError("ai.run requires key=... OR agent_id=... and tool=...")
             payload: Dict[str, Any] = {"agent_id": str(agent_id), "tool": str(tool)}
-            if args is not None:
-                payload["args"] = dict(args)
+            call_args = dict(args or {})
+            if run_id_norm is not None:
+                call_args["run_id"] = run_id_norm
+            if call_args:
+                payload["args"] = call_args
             if spend_usd is not None:
                 payload["spend_usd"] = float(spend_usd)
         else:
@@ -155,6 +169,9 @@ class AiClient:
             if ttl is not None:
                 payload["ttl"] = int(ttl)
             md = to_metadata_dict(metadata)
+            if run_id_norm is not None:
+                md = dict(md or {})
+                md["run_id"] = run_id_norm
             if md is not None:
                 payload["metadata"] = md
 
@@ -243,6 +260,7 @@ class AiClient:
         tool: Optional[str] = None,
         args: Optional[Dict[str, Any]] = None,
         spend_usd: Optional[float] = None,
+        run_id: Optional[str] = None,
         timeout: float = 60.0,
         poll_min: float = 0.5,
         poll_max: float = 5.0,
@@ -256,12 +274,13 @@ class AiClient:
                 tool=tool,
                 args=args,
                 spend_usd=spend_usd,
+                run_id=run_id,
             )
 
         if key is None:
             raise ValueError("ai.run_and_wait requires key=... OR agent_id/tool for tool execution")
 
-        run = self.run(key=key, ttl=ttl, metadata=metadata)
+        run = self.run(key=key, ttl=ttl, metadata=metadata, run_id=run_id)
         return self.wait(
             key=key,
             timeout=timeout,
@@ -280,6 +299,7 @@ class AiClient:
         tool: str,
         args: Optional[Dict[str, Any]] = None,
         spend_usd: Optional[float] = None,
+        run_id: Optional[str] = None,
     ) -> AiToolResult:
         res = self.run(
             key=None,
@@ -287,6 +307,7 @@ class AiClient:
             tool=tool,
             args=args,
             spend_usd=spend_usd,
+            run_id=run_id,
         )
         assert isinstance(res, AiToolResult)
         return res
@@ -413,13 +434,18 @@ class AiClient:
         tool: Optional[str] = None,
         args: Optional[Dict[str, Any]] = None,
         spend_usd: Optional[float] = None,
+        run_id: Optional[str] = None,
     ) -> Union[AiRun, AiToolResult]:
+        run_id_norm = self._normalize_run_id(run_id)
         if key is None:
             if not agent_id or not tool:
                 raise ValueError("ai.run_async requires key=... OR agent_id=... and tool=...")
             payload: Dict[str, Any] = {"agent_id": str(agent_id), "tool": str(tool)}
-            if args is not None:
-                payload["args"] = dict(args)
+            call_args = dict(args or {})
+            if run_id_norm is not None:
+                call_args["run_id"] = run_id_norm
+            if call_args:
+                payload["args"] = call_args
             if spend_usd is not None:
                 payload["spend_usd"] = float(spend_usd)
         else:
@@ -429,6 +455,9 @@ class AiClient:
             if ttl is not None:
                 payload["ttl"] = int(ttl)
             md = to_metadata_dict(metadata)
+            if run_id_norm is not None:
+                md = dict(md or {})
+                md["run_id"] = run_id_norm
             if md is not None:
                 payload["metadata"] = md
 
@@ -520,6 +549,7 @@ class AiClient:
         tool: Optional[str] = None,
         args: Optional[Dict[str, Any]] = None,
         spend_usd: Optional[float] = None,
+        run_id: Optional[str] = None,
         timeout: float = 60.0,
         poll_min: float = 0.5,
         poll_max: float = 5.0,
@@ -533,12 +563,13 @@ class AiClient:
                 tool=tool,
                 args=args,
                 spend_usd=spend_usd,
+                run_id=run_id,
             )
 
         if key is None:
             raise ValueError("ai.run_and_wait_async requires key=... OR agent_id/tool for tool execution")
 
-        run = await self.run_async(key=key, ttl=ttl, metadata=metadata)
+        run = await self.run_async(key=key, ttl=ttl, metadata=metadata, run_id=run_id)
         return await self.wait_async(
             key=key,
             timeout=timeout,
@@ -557,6 +588,7 @@ class AiClient:
         tool: str,
         args: Optional[Dict[str, Any]] = None,
         spend_usd: Optional[float] = None,
+        run_id: Optional[str] = None,
     ) -> AiToolResult:
         res = await self.run_async(
             key=None,
@@ -564,6 +596,7 @@ class AiClient:
             tool=tool,
             args=args,
             spend_usd=spend_usd,
+            run_id=run_id,
         )
         assert isinstance(res, AiToolResult)
         return res

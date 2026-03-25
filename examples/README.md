@@ -140,6 +140,8 @@ res = await client.ai.run_tool_async(
 |------|---------|----------|
 | [`ai_simple.py`](./ai/ai_simple.py) | Basic AI job | 2s |
 | [`run_and_wait.py`](./ai/run_and_wait.py) | Poll until completion | 5-10s |
+| [`run_debug_timeline.py`](./ai/run_debug_timeline.py) | Run logs/timeline debugging (`run_id`) | 3-5s |
+| [`run_debug_failure.py`](./ai/run_debug_failure.py) | Debug blocked/failed run with timeline | 3-5s |
 | [`agent_action_local.py`](./ai/agent_action_local.py) | Exactly-once local execution | 3s |
 | [`poll_status.py`](./ai/poll_status.py) | Manual polling | 5s |
 | [`get_result.py`](./ai/get_result.py) | Fetch completed result | 1s |
@@ -162,7 +164,7 @@ Governance includes four safety layers:
 
 ### API Endpoints Map (Public)
 
-- **Core**: `GET /v1/me`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`
+- **Core**: `GET /v1/me`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`, `POST /v1/events`, `GET /v1/runs/{run_id}`
 - **Idempotency**: `POST /v1/check-lock`
 - **AI Jobs**: `POST /v1/ai/run`, `GET /v1/ai/status`, `GET /v1/ai/result`
 - **AI Lease (local side-effects)**: `POST /v1/ai/lease`, `POST /v1/ai/extend`, `POST /v1/ai/complete`, `POST /v1/ai/fail`, `POST /v1/ai/cancel`

@@ -147,15 +147,21 @@ send_welcome_email("user_123")  # Returns cached result
 **I want…**
 - **Idempotent webhook/cron/job:** `check_lock(key, ttl, meta)`
 - **Long-running server job:** `ai.run_and_wait(key, ttl, metadata)`
+- **Start/attach AI run (without polling):** `ai_run(key=..., run_id=...)`
 - **Governed tool call (agent + tool):** `ai.run_tool(agent_id, tool, args, spend_usd)`
 - **Local side-effect exactly once:** `ai.run_fn(key, fn, ttl)`
+- **Run debug timeline:** `get_run_timeline(run_id, limit, offset)`
+- **Custom run event:** `post_event(run_id=..., type=..., ...)`
 - **Decorator version:** `@idempotent` or `@idempotent_ai`
 
 **Async equivalents**
 - `check_lock_async`
+- `ai_run_async`
 - `ai.run_and_wait_async`
 - `ai.run_tool_async`
 - `ai.run_fn_async`
+- `post_event_async`
+- `get_run_timeline_async`
 
 ---
 
@@ -531,7 +537,7 @@ client = OnceOnly(
 
 Use this map to find the correct endpoint category quickly:
 
-- **Core**: `GET /v1/me`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`
+- **Core**: `GET /v1/me`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`, `POST /v1/events`, `GET /v1/runs/{run_id}`
 - **Idempotency**: `POST /v1/check-lock`
 - **AI Jobs**: `POST /v1/ai/run`, `GET /v1/ai/status`, `GET /v1/ai/result`
 - **AI Lease (local side-effects)**: `POST /v1/ai/lease`, `POST /v1/ai/extend`, `POST /v1/ai/complete`, `POST /v1/ai/fail`, `POST /v1/ai/cancel`
@@ -569,7 +575,8 @@ result = client.ai.run_and_wait(
     timeout=120.0,                 # Polling timeout
     poll_min=1.0,                  # Min poll interval
     poll_max=10.0,                 # Max poll interval
-    metadata={"month": "2024-01"}
+    metadata={"month": "2024-01"},
+    run_id="run_report_2024_01",
 )
 
 # Governance tool runner (agent + tool)
@@ -577,6 +584,7 @@ tool_res = client.ai.run_tool(
     agent_id="billing-agent",
     tool="stripe.charge",
     args={"amount": 9999, "currency": "usd"},
+    run_id="run_charge_001",
     spend_usd=0.5
 )
 if tool_res.allowed:
@@ -589,6 +597,7 @@ tool_res = await client.ai.run_tool_async(
     agent_id="billing-agent",
     tool="stripe.charge",
     args={"amount": 9999, "currency": "usd"},
+    run_id="run_charge_002",
     spend_usd=0.5
 )
 if tool_res.allowed:
@@ -614,6 +623,18 @@ print(f"Status: {status.status}, TTL: {status.ttl_left}s")
 result = client.ai.result("report:monthly:2024-01")
 if result.status == "completed":
     print(result.result)
+
+# Run debug APIs
+timeline = client.get_run_timeline("run_report_2024_01", limit=200, offset=0)
+client.post_event(
+    run_id="run_report_2024_01",
+    type="note",
+    message="manually marked for investigation",
+)
+```
+
+Runnable example: `python examples/ai/run_debug_timeline.py`
+Failure-focused example: `python examples/ai/run_debug_failure.py`
 
 ### AI Modes (Choose One)
 
@@ -661,7 +682,6 @@ if res.allowed:
     print("OK", res.result)
 else:
     print("BLOCKED", res.policy_reason)
-```
 ```
 
 ### Decorators

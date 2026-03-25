@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from typing import Optional, Dict, Any
 
 import httpx
@@ -169,6 +169,12 @@ class OnceOnly:
             raise
 
     # thin wrapper for agent UX
+    def ai_run(self, key: Optional[str] = None, **kwargs):
+        return self.ai.run(key=key, **kwargs)
+
+    async def ai_run_async(self, key: Optional[str] = None, **kwargs):
+        return await self.ai.run_async(key=key, **kwargs)
+
     def ai_run_and_wait(self, key: Optional[str] = None, **kwargs):
         return self.ai.run_and_wait(key=key, **kwargs)
 
@@ -232,19 +238,153 @@ class OnceOnly:
         )
         return parse_json_or_raise(resp)
 
-    def events(self, limit: int = 50) -> Any:
+    def events(self, limit: int = 50, offset: int = 0) -> Any:
         resp = request_with_retries_sync(
-            lambda: self._sync_client.get("/events", params={"limit": int(limit)}),
+            lambda: self._sync_client.get("/events", params={"limit": int(limit), "offset": int(offset)}),
             max_retries=self._max_retries_429,
             base_backoff=self._retry_backoff,
             max_backoff=self._retry_max_backoff,
         )
         return parse_json_or_raise(resp)
 
-    async def events_async(self, limit: int = 50) -> Any:
+    async def events_async(self, limit: int = 50, offset: int = 0) -> Any:
         client = await self._get_async_client()
         resp = await request_with_retries_async(
-            lambda: client.get("/events", params={"limit": int(limit)}),
+            lambda: client.get("/events", params={"limit": int(limit), "offset": int(offset)}),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    def post_event(
+        self,
+        *,
+        run_id: str,
+        type: str,
+        ts: Optional[int] = None,
+        status: Optional[str] = None,
+        duration_ms: Optional[int] = None,
+        step: Optional[str] = None,
+        tool: Optional[str] = None,
+        req_id: Optional[str] = None,
+        lease_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        message: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        **extra: Any,
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {"run_id": str(run_id), "type": str(type)}
+        if ts is not None:
+            payload["ts"] = int(ts)
+        if status is not None:
+            payload["status"] = str(status)
+        if duration_ms is not None:
+            payload["duration_ms"] = int(duration_ms)
+        if step is not None:
+            payload["step"] = str(step)
+        if tool is not None:
+            payload["tool"] = str(tool)
+        if req_id is not None:
+            payload["req_id"] = str(req_id)
+        if lease_id is not None:
+            payload["lease_id"] = str(lease_id)
+        if agent_id is not None:
+            payload["agent_id"] = str(agent_id)
+        if message is not None:
+            payload["message"] = str(message)
+        if data is not None:
+            payload["data"] = dict(data)
+        if extra:
+            payload.update(extra)
+
+        resp = request_with_retries_sync(
+            lambda: self._sync_client.post("/events", json=payload),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    async def post_event_async(
+        self,
+        *,
+        run_id: str,
+        type: str,
+        ts: Optional[int] = None,
+        status: Optional[str] = None,
+        duration_ms: Optional[int] = None,
+        step: Optional[str] = None,
+        tool: Optional[str] = None,
+        req_id: Optional[str] = None,
+        lease_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        message: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        **extra: Any,
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {"run_id": str(run_id), "type": str(type)}
+        if ts is not None:
+            payload["ts"] = int(ts)
+        if status is not None:
+            payload["status"] = str(status)
+        if duration_ms is not None:
+            payload["duration_ms"] = int(duration_ms)
+        if step is not None:
+            payload["step"] = str(step)
+        if tool is not None:
+            payload["tool"] = str(tool)
+        if req_id is not None:
+            payload["req_id"] = str(req_id)
+        if lease_id is not None:
+            payload["lease_id"] = str(lease_id)
+        if agent_id is not None:
+            payload["agent_id"] = str(agent_id)
+        if message is not None:
+            payload["message"] = str(message)
+        if data is not None:
+            payload["data"] = dict(data)
+        if extra:
+            payload.update(extra)
+
+        client = await self._get_async_client()
+        resp = await request_with_retries_async(
+            lambda: client.post("/events", json=payload),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    def get_run_timeline(self, run_id: str, *, limit: int = 200, offset: int = 0) -> Dict[str, Any]:
+        run_id_norm = str(run_id).strip()
+        if not run_id_norm:
+            raise ValueError("run_id must not be empty")
+
+        run_id_path = quote(run_id_norm, safe="")
+        resp = request_with_retries_sync(
+            lambda: self._sync_client.get(
+                f"/runs/{run_id_path}",
+                params={"limit": int(limit), "offset": int(offset)},
+            ),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    async def get_run_timeline_async(self, run_id: str, *, limit: int = 200, offset: int = 0) -> Dict[str, Any]:
+        run_id_norm = str(run_id).strip()
+        if not run_id_norm:
+            raise ValueError("run_id must not be empty")
+
+        run_id_path = quote(run_id_norm, safe="")
+        client = await self._get_async_client()
+        resp = await request_with_retries_async(
+            lambda: client.get(
+                f"/runs/{run_id_path}",
+                params={"limit": int(limit), "offset": int(offset)},
+            ),
             max_retries=self._max_retries_429,
             base_backoff=self._retry_backoff,
             max_backoff=self._retry_max_backoff,
