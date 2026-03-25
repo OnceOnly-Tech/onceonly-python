@@ -6,8 +6,9 @@
 Exactly-once execution + runtime safety + agent control plane.
 
 [![PyPI version](https://img.shields.io/pypi/v/onceonly-sdk.svg)](https://pypi.org/project/onceonly-sdk/)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://static.pepy.tech/badge/onceonly-sdk)](https://pepy.tech/project/onceonly-sdk)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 [Website](https://onceonly.tech/) • [Docs](https://docs.onceonly.tech) • [API Reference](https://docs.onceonly.tech/reference/idempotency/) • [Examples](./examples/)
 
