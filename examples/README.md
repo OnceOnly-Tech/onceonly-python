@@ -164,7 +164,7 @@ Governance includes four safety layers:
 
 ### API Endpoints Map (Public)
 
-- **Core**: `GET /v1/me`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`, `POST /v1/events`, `GET /v1/runs/{run_id}`
+- **Core**: `GET /v1/me`, `POST /v1/me/notifications`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`, `POST /v1/events`, `GET /v1/runs/{run_id}`
 - **Idempotency**: `POST /v1/check-lock`
 - **AI Jobs**: `POST /v1/ai/run`, `GET /v1/ai/status`, `GET /v1/ai/result`
 - **AI Lease (local side-effects)**: `POST /v1/ai/lease`, `POST /v1/ai/extend`, `POST /v1/ai/complete`, `POST /v1/ai/fail`, `POST /v1/ai/cancel`
@@ -172,10 +172,12 @@ Governance includes four safety layers:
 - **Governance (agents)**: `POST /v1/agents/{agent_id}/disable`, `POST /v1/agents/{agent_id}/enable`, `GET /v1/agents/{agent_id}/logs`, `GET /v1/agents/{agent_id}/metrics`
 - **Tools Registry**: `POST /v1/tools`, `GET /v1/tools`, `GET /v1/tools/{tool}`, `POST /v1/tools/{tool}/toggle`, `DELETE /v1/tools/{tool}`
 
-### Plan Differences (Pro vs Agency)
+### Plan Entitlements (Quick Summary)
 
-- **Pro**: Governance is limited (no `allowed_tools` whitelist, no kill switch).
-- **Agency**: Full governance (tool whitelist + kill switch).
+- **Free**: policy upsert + tool allow/block lists + tools registry (1 tool), no kill switch, no logs/metrics.
+- **Starter**: adds budget/action/per-tool caps + tools registry (20 tools), no kill switch, no logs/metrics.
+- **Pro**: adds kill switch + logs/metrics + pricing rules + tools registry (100 tools).
+- **Agency**: same capabilities with higher limits (tools registry 1000 tools).
 
 ### Policy Templates (Server Defaults)
 
@@ -190,12 +192,16 @@ Available templates:
 
 | Plan | `check_lock` (make) | `ai` (runs) | Default TTL | Max TTL | Tools Registry Limit |
 |------|---------------------|------------|-------------|---------|----------------------|
-| Free | 1K / month | 3K / month | 60s | 1h | Not available |
-| Starter | 20K / month | 100K / month | 1h | 24h | Not available |
-| Pro | 200K / month | 1M / month | 6h | 7d | 10 tools |
-| Agency | 2M / month | 10M / month | 24h | 30d | 500 tools |
+| Free | 1K / month | 3K / month | 60s | 1h | 1 tool |
+| Starter | 20K / month | 100K / month | 1h | 24h | 20 tools |
+| Pro | 200K / month | 1M / month | 6h | 7d | 100 tools |
+| Agency | 2M / month | 10M / month | 24h | 30d | 1000 tools |
 
-### Tools Registry (Pro / Agency)
+Notes:
+- Monthly hard-stop limit is enforced on Free.
+- Starter/Pro/Agency continue after monthly threshold (soft-limit notifications).
+
+### Tools Registry (All Plans)
 
 ```python
 # Register a tool

@@ -153,6 +153,7 @@ send_welcome_email("user_123")  # Returns cached result
 - **Local side-effect exactly once:** `ai.run_fn(key, fn, ttl)`
 - **Run debug timeline:** `get_run_timeline(run_id, limit, offset)`
 - **Custom run event:** `post_event(run_id=..., type=..., ...)`
+- **Update notification prefs:** `update_notifications(...)`
 - **Decorator version:** `@idempotent` or `@idempotent_ai`
 
 **Async equivalents**
@@ -163,6 +164,7 @@ send_welcome_email("user_123")  # Returns cached result
 - `ai.run_fn_async`
 - `post_event_async`
 - `get_run_timeline_async`
+- `update_notifications_async`
 
 ---
 
@@ -483,7 +485,7 @@ async def stripe_webhook(
 Register your own tools (URLs) and enforce permissions per agent.
 
 ```python
-# Register a tool (requires Pro or Agency)
+# Register a tool (available on all plans; plan limits apply)
 tool = client.gov.create_tool({
     "name": "send_email",
     "url": "https://example.com/tools/send_email",
@@ -503,10 +505,10 @@ tools = client.gov.list_tools(scope_id="global")
 ```
 
 **Tools registry limits by plan**
-- Pro: 10 tools
-- Agency: 500 tools
-
-Note: Tools registry is **not available** on Free/Starter.
+- Free: 1 tool
+- Starter: 20 tools
+- Pro: 100 tools
+- Agency: 1000 tools
 
 **Rules & expectations (important)**
 - `name` must be unique per `scope_id` and match `^[a-zA-Z0-9_.:-]+$`
@@ -538,13 +540,28 @@ client = OnceOnly(
 
 Use this map to find the correct endpoint category quickly:
 
-- **Core**: `GET /v1/me`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`, `POST /v1/events`, `GET /v1/runs/{run_id}`
+- **Core**: `GET /v1/me`, `POST /v1/me/notifications`, `GET /v1/usage`, `GET /v1/usage/all`, `GET /v1/events`, `GET /v1/metrics`, `POST /v1/events`, `GET /v1/runs/{run_id}`
 - **Idempotency**: `POST /v1/check-lock`
 - **AI Jobs**: `POST /v1/ai/run`, `GET /v1/ai/status`, `GET /v1/ai/result`
 - **AI Lease (local side-effects)**: `POST /v1/ai/lease`, `POST /v1/ai/extend`, `POST /v1/ai/complete`, `POST /v1/ai/fail`, `POST /v1/ai/cancel`
 - **Governance (policies)**: `POST /v1/policies/{agent_id}`, `POST /v1/policies/{agent_id}/from-template`, `GET /v1/policies`, `GET /v1/policies/{agent_id}`
 - **Governance (agents)**: `POST /v1/agents/{agent_id}/disable`, `POST /v1/agents/{agent_id}/enable`, `GET /v1/agents/{agent_id}/logs`, `GET /v1/agents/{agent_id}/metrics`
 - **Tools Registry**: `POST /v1/tools`, `GET /v1/tools`, `GET /v1/tools/{tool}`, `POST /v1/tools/{tool}/toggle`, `DELETE /v1/tools/{tool}`
+
+### Notification Preferences
+
+```python
+# Global toggle + per-channel toggles (partial updates supported)
+prefs = client.update_notifications(
+    email_notifications_enabled=True,
+    tool_error_notifications_enabled=True,
+    run_failure_notifications_enabled=False,
+)
+print(prefs)
+
+# Async
+prefs = await client.update_notifications_async(run_failure_notifications_enabled=True)
+```
 
 ### Idempotency
 
@@ -865,9 +882,10 @@ client = OnceOnly(api_key="once_live_...")
 
 ### "Usage limit reached" (402)
 
-**Cause:** Exceeded monthly quota for your plan
+**Cause:** Exceeded monthly quota on the Free plan (hard cap).
 
-**Solution:** Upgrade at https://onceonly.tech/pricing
+**Note:** Paid plans (Starter/Pro/Agency) are soft-limited for monthly volume and continue to run.
+You can still monitor usage and upgrade at https://onceonly.tech/pricing
 
 ```python
 # Check current usage
@@ -928,19 +946,20 @@ client.gov.upsert_policy({
 | `check_lock()` | 1K/mo | 20K/mo | 200K/mo | 2M/mo |
 | `ai.run_and_wait()` | 3K/mo | 100K/mo | 1M/mo | 10M/mo |
 | **Agent Governance** |||||
-| `gov.upsert_policy()` | ❌ | ❌ | ✅ Limited | ✅ Full |
+| `gov.upsert_policy()` | ✅ Entitlement-based | ✅ Entitlement-based | ✅ Entitlement-based | ✅ Entitlement-based |
 | `gov.agent_logs()` | ❌ | ❌ | ✅ | ✅ |
 | `gov.agent_metrics()` | ❌ | ❌ | ✅ | ✅ |
-| `gov.disable_agent()` (Kill switch) | ❌ | ❌ | ❌ | ✅ |
-| `gov.enable_agent()` | ❌ | ❌ | ❌ | ✅ |
+| `gov.disable_agent()` (Kill switch) | ❌ | ❌ | ✅ | ✅ |
+| `gov.enable_agent()` | ❌ | ❌ | ✅ | ✅ |
 | **Policy Features** |||||
-| Budget limits (`max_spend_usd_per_day`) | ❌ | ❌ | ✅ | ✅ |
-| Tool blocklist (`blocked_tools`) | ❌ | ❌ | ✅ | ✅ |
-| Tool whitelist (`allowed_tools`) | ❌ | ❌ | ❌ | ✅ |
-| Per-tool limits (`max_calls_per_tool`) | ❌ | ❌ | ✅ | ✅ |
-
-> **Pro Plan**: Limited governance (no `allowed_tools` whitelist, no kill switch)  
-> **Agency Plan**: Full governance (whitelist, kill switch, anomaly detection)
+| Budget/action limits (`max_spend_usd_per_day`, `max_actions_per_hour`) | ❌ | ✅ | ✅ | ✅ |
+| Tool blocklist (`blocked_tools`) | ✅ | ✅ | ✅ | ✅ |
+| Tool whitelist (`allowed_tools`) | ✅ | ✅ | ✅ | ✅ |
+| Per-tool limits (`max_calls_per_tool`) | ❌ | ✅ | ✅ | ✅ |
+| Pricing rules (`pricing_rules`) | ❌ | ❌ | ✅ | ✅ |
+| **Tools Registry** |||||
+| `gov.create_tool()` + tool CRUD | ✅ | ✅ | ✅ | ✅ |
+| Max tools per account | 1 | 20 | 100 | 1000 |
 
 ## 📈 Plan Limits (Defaults)
 
@@ -948,14 +967,14 @@ These are the default limits enforced by the API (may be configured by the serve
 
 | Plan | `check_lock` (make) | `ai` (runs) | Default TTL | Max TTL | Tools Registry Limit |
 |------|---------------------|------------|-------------|---------|----------------------|
-| Free | 1K / month | 3K / month | 60s | 1h | Not available |
-| Starter | 20K / month | 100K / month | 1h | 24h | Not available |
-| Pro | 200K / month | 1M / month | 6h | 7d | 10 tools |
-| Agency | 2M / month | 10M / month | 24h | 30d | 500 tools |
+| Free | 1K / month | 3K / month | 60s | 1h | 1 tool |
+| Starter | 20K / month | 100K / month | 1h | 24h | 20 tools |
+| Pro | 200K / month | 1M / month | 6h | 7d | 100 tools |
+| Agency | 2M / month | 10M / month | 24h | 30d | 1000 tools |
 
-**Pro vs Agency differences (important):**
-- **Pro**: Governance is limited (no `allowed_tools` whitelist, no kill switch).
-- **Agency**: Full governance, including tool whitelist + kill switch.
+Notes:
+- Monthly hard-stop limit is enforced on Free.
+- Starter/Pro/Agency continue after monthly threshold (soft-limit notifications).
 
 ---
 

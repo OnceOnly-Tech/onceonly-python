@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [3.0.5] - 2026-03-30
+- Added notification preferences SDK methods:
+  - `update_notifications(...)` / `update_notifications_async(...)` -> `POST /v1/me/notifications`
+  - supports partial updates for `email_notifications_enabled`, `tool_error_notifications_enabled`, `run_failure_notifications_enabled`
+- Added tests for notification preferences client methods (sync + async payload validation and endpoint mapping).
+- Updated `README.md` and `examples/README.md` for latest backend plan matrix:
+  - tools registry now available on all plans with limits `1 / 20 / 100 / 1000`
+  - governance entitlements and kill switch availability aligned with backend
+  - documented free hard-limit vs paid soft-limit usage behavior
+
 ## [3.0.4] - 2026-03-25
 - Added run debug SDK methods:
   - `post_event(...)` / `post_event_async(...)` -> `POST /v1/events`

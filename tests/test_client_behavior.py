@@ -1,6 +1,6 @@
 import pytest
 import httpx
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from onceonly.client import OnceOnly
 from onceonly.exceptions import UnauthorizedError, OverLimitError, ValidationError
@@ -74,3 +74,63 @@ def test_fail_open_does_not_mask_4xx_errors():
     mock_http.post.return_value = httpx.Response(422, json={"detail": "Validation Error"}, request=_mk_req())
     with pytest.raises(ValidationError):
         client.check_lock("k")
+
+
+def test_update_notifications_calls_endpoint():
+    mock_http = MagicMock()
+    req = httpx.Request("POST", "https://api.onceonly.tech/v1/me/notifications")
+    mock_http.post.return_value = httpx.Response(
+        200,
+        json={
+            "email_notifications_enabled": True,
+            "tool_error_notifications_enabled": False,
+            "run_failure_notifications_enabled": True,
+        },
+        request=req,
+    )
+
+    client = OnceOnly("apikey", sync_client=mock_http)
+    out = client.update_notifications(tool_error_notifications_enabled=False)
+
+    assert out["tool_error_notifications_enabled"] is False
+    args, kwargs = mock_http.post.call_args
+    assert args[0] == "/me/notifications"
+    assert kwargs["json"] == {"tool_error_notifications_enabled": False}
+
+
+def test_update_notifications_requires_payload():
+    client = OnceOnly("apikey", sync_client=MagicMock())
+    with pytest.raises(ValueError, match="at least one preference field"):
+        client.update_notifications()
+
+
+@pytest.mark.asyncio
+async def test_update_notifications_async_calls_endpoint():
+    mock_sync = MagicMock()
+    mock_async = MagicMock()
+    mock_async.post = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "email_notifications_enabled": True,
+                "tool_error_notifications_enabled": True,
+                "run_failure_notifications_enabled": False,
+            },
+            request=httpx.Request("POST", "https://api.onceonly.tech/v1/me/notifications"),
+        )
+    )
+    client = OnceOnly("apikey", sync_client=mock_sync, async_client=mock_async)
+
+    out = await client.update_notifications_async(run_failure_notifications_enabled=False)
+
+    assert out["run_failure_notifications_enabled"] is False
+    args, kwargs = mock_async.post.call_args
+    assert args[0] == "/me/notifications"
+    assert kwargs["json"] == {"run_failure_notifications_enabled": False}
+
+
+@pytest.mark.asyncio
+async def test_update_notifications_async_requires_payload():
+    client = OnceOnly("apikey", sync_client=MagicMock(), async_client=MagicMock())
+    with pytest.raises(ValueError, match="at least one preference field"):
+        await client.update_notifications_async()

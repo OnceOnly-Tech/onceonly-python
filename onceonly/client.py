@@ -200,6 +200,57 @@ class OnceOnly:
         )
         return parse_json_or_raise(resp)
 
+    def update_notifications(
+        self,
+        *,
+        email_notifications_enabled: Optional[bool] = None,
+        tool_error_notifications_enabled: Optional[bool] = None,
+        run_failure_notifications_enabled: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {}
+        if email_notifications_enabled is not None:
+            payload["email_notifications_enabled"] = bool(email_notifications_enabled)
+        if tool_error_notifications_enabled is not None:
+            payload["tool_error_notifications_enabled"] = bool(tool_error_notifications_enabled)
+        if run_failure_notifications_enabled is not None:
+            payload["run_failure_notifications_enabled"] = bool(run_failure_notifications_enabled)
+        if not payload:
+            raise ValueError("update_notifications requires at least one preference field")
+
+        resp = request_with_retries_sync(
+            lambda: self._sync_client.post("/me/notifications", json=payload),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
+    async def update_notifications_async(
+        self,
+        *,
+        email_notifications_enabled: Optional[bool] = None,
+        tool_error_notifications_enabled: Optional[bool] = None,
+        run_failure_notifications_enabled: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {}
+        if email_notifications_enabled is not None:
+            payload["email_notifications_enabled"] = bool(email_notifications_enabled)
+        if tool_error_notifications_enabled is not None:
+            payload["tool_error_notifications_enabled"] = bool(tool_error_notifications_enabled)
+        if run_failure_notifications_enabled is not None:
+            payload["run_failure_notifications_enabled"] = bool(run_failure_notifications_enabled)
+        if not payload:
+            raise ValueError("update_notifications_async requires at least one preference field")
+
+        client = await self._get_async_client()
+        resp = await request_with_retries_async(
+            lambda: client.post("/me/notifications", json=payload),
+            max_retries=self._max_retries_429,
+            base_backoff=self._retry_backoff,
+            max_backoff=self._retry_max_backoff,
+        )
+        return parse_json_or_raise(resp)
+
     def usage(self, kind: str = "make") -> Dict[str, Any]:
         resp = request_with_retries_sync(
             lambda: self._sync_client.get("/usage", params={"kind": kind}),
