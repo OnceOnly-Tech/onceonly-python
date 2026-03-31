@@ -12,9 +12,9 @@ Exactly-once execution + runtime safety + agent control plane.
 
 [Website](https://onceonly.tech/) • [Docs](https://docs.onceonly.tech) • [API Reference](https://docs.onceonly.tech/reference/idempotency/) • [Examples](./examples/)
 
+![OnceOnly](./docs/onceonly.gif)
 </div>
 
----
 
 ## 🎯 What is OnceOnly?
 
