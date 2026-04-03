@@ -23,7 +23,7 @@ if not API_KEY:
 
 client = OnceOnly(api_key=API_KEY)
 
-KEY = "ai:agent:charge:user_42:invoice_101"
+KEY = (os.getenv("ONCEONLY_ACTION_KEY") or "").strip() or "ai:agent:charge:user_42:invoice_101"
 
 
 def do_side_effect() -> dict:
@@ -34,6 +34,7 @@ def do_side_effect() -> dict:
 
 def main() -> None:
     try:
+        print(f"key={KEY}")
         lease = client.ai.lease(key=KEY, ttl=300, metadata={"kind": "charge", "user": "user_42", "invoice": "100"})
         status = (lease.get("status") or "").lower()
 

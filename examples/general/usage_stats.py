@@ -16,8 +16,14 @@ def main() -> None:
     me = client.me()
     print_section("/me", me)
 
-    usage = client.usage(kind="make")
-    print_section("/usage?kind=make", usage)
+    usage_make = client.usage(kind="make")
+    print_section("/usage?kind=make", usage_make)
+
+    usage_ai = client.usage(kind="ai")
+    print_section("/usage?kind=ai", usage_ai)
+
+    usage_all = client.usage_all()
+    print_section("/usage/all", usage_all)
 
 if __name__ == "__main__":
     main()

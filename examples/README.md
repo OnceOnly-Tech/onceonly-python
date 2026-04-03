@@ -22,9 +22,8 @@ python examples/quickstart.py
 
 **Expected output:**
 ```
-✅ First call: locked=True, duplicate=False
-❌ Second call: locked=False, duplicate=True
-✨ Idempotency working!
+First call: locked=True, duplicate=False
+Second call: locked=False, duplicate=True
 ```
 
 ---
@@ -36,10 +35,10 @@ Pick your use case:
 | Category | When to use | Start with |
 |----------|-------------|------------|
 | **[Webhooks & Workers](#webhooks--workers)** | Stripe webhooks, cron jobs, background tasks | [`webhook_dedup.py`](./general/webhook_dedup.py) |
-| **[AI Agents](#ai-agents)** | Long-running AI jobs, tool calling, function execution | [`ai_simple.py`](./ai/ai_simple.py) |
+| **[AI Agents](#ai-agents)** | Long-running AI jobs, tool calling, function execution | [`run_and_wait.py`](./ai/run_and_wait.py) |
 | **[Governance](#governance)** | Budget limits, permissions, kill switch, audit | [`governance.py`](./ai/governance.py) |
-| **[Decorators](#decorators)** | Function-level exactly-once | [`decorator_basic.py`](./general/decorator_basic.py) |
-| **[LangChain](#langchain)** | Agent tool wrapping | [`langchain_integration.py`](./ai/langchain_integration.py) |
+| **[Decorators](#decorators)** | Function-level exactly-once | [`decorator_sync.py`](./general/decorator_sync.py) |
+| **[LangChain](#langchain)** | Agent tool wrapping | [`langchain_tool_ai_lease.py`](./ai/langchain_tool_ai_lease.py) |
 
 ---
 
@@ -88,7 +87,7 @@ python examples/general/webhook_dedup.py
 Long-running AI job with automatic deduplication:
 
 ```python
-# examples/ai/ai_simple.py
+# examples/ai/run_and_wait.py
 result = client.ai.run_and_wait(
     key="report:daily:2024-01-27",
     ttl=1800,
@@ -101,7 +100,7 @@ if result.status == "completed":
 
 **Run it:**
 ```bash
-python examples/ai/ai_simple.py
+python examples/ai/run_and_wait.py
 ```
 
 ### Tool Runner (Governed)
@@ -138,13 +137,20 @@ res = await client.ai.run_tool_async(
 
 | File | Concept | Run time |
 |------|---------|----------|
-| [`ai_simple.py`](./ai/ai_simple.py) | Basic AI job | 2s |
 | [`run_and_wait.py`](./ai/run_and_wait.py) | Poll until completion | 5-10s |
+| [`governance.py`](./ai/governance.py) | End-to-end governance workflow | 5-10s |
+| [`tool_permissions.py`](./ai/tool_permissions.py) | Allow/block tool lists | 2-5s |
+| [`budget_limits.py`](./ai/budget_limits.py) | Budget and per-tool caps | 2-5s |
+| [`policy_templates.py`](./ai/policy_templates.py) | Apply template + overrides | 2s |
+| [`kill_switch.py`](./ai/kill_switch.py) | Emergency disable/enable | 2s |
+| [`audit_logs.py`](./ai/audit_logs.py) | Fetch forensic action logs | 2s |
+| [`metrics_monitoring.py`](./ai/metrics_monitoring.py) | Monitor actions/spend metrics | 2s |
 | [`run_debug_timeline.py`](./ai/run_debug_timeline.py) | Run logs/timeline debugging (`run_id`) | 3-5s |
 | [`run_debug_failure.py`](./ai/run_debug_failure.py) | Debug blocked/failed run with timeline | 3-5s |
 | [`agent_action_local.py`](./ai/agent_action_local.py) | Exactly-once local execution | 3s |
 | [`poll_status.py`](./ai/poll_status.py) | Manual polling | 5s |
 | [`get_result.py`](./ai/get_result.py) | Fetch completed result | 1s |
+| [`langchain_tool_ai_lease.py`](./ai/langchain_tool_ai_lease.py) | LangChain-style tool dedup | 2-5s |
 | [`agent_full_flow_no_onceonly.py`](./ai/agent_full_flow_no_onceonly.py) | Full LLM flow (no OnceOnly) | 5s |
 | [`agent_full_flow_onceonly.py`](./ai/agent_full_flow_onceonly.py) | Full LLM flow (with OnceOnly) | 5s |
 
